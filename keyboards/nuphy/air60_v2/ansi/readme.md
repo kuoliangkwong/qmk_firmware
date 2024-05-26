@@ -17,7 +17,14 @@ Flashing example for this keyboard:
 
 See the [build environment setup](https://docs.qmk.fm/#/getting_started_build_tools) and the [make instructions](https://docs.qmk.fm/#/getting_started_make_guide) for more information. Brand new to QMK? Start with our [Complete Newbs Guide](https://docs.qmk.fm/#/newbs).
 
-### Side Light Custom Color via VIA Support (Only works for Air60v2)
+## Bootloader
+
+Enter the bootloader in one way:
+
+* **Bootmagic reset**: Hold down the key at (0,0) in the matrix (usually the top left key or Escape) and plug in the keyboard
+
+
+## Side Light Custom Color via VIA Support (Only works for Air60v2)
 Follow these steps to change side light color:
 1. Connect keyboard via USB.
 2. Open [VIA](https://usevia.app/) and connect your keyboard.
@@ -34,9 +41,3 @@ Follow these steps to change side light color:
 **Disclaimers**
 
 Custom side light color is an unofficial feature made by me. There might be risk of bricking your keyboard using this firmware. Use it at your own risk as this is not tested thoroughly.
-
-## Bootloader
-
-Enter the bootloader in one way:
-
-* **Bootmagic reset**: Hold down the key at (0,0) in the matrix (usually the top left key or Escape) and plug in the keyboard
