@@ -30,7 +30,7 @@ Follow these steps to change side light color:
 2. Open [VIA](https://usevia.app/) and connect your keyboard.
 3. Press ```FN + M + >``` to change the color mode from rainbow to custom color mode.
 4. Change the light color in VIA. This will change your backlight. It is expected.
-5. Press ```FN + M + Right CMD``` to sync the current backlight color from VIA to side light. (You could also assign a specific a key for this action. Look for ```Side Sync``` under ```Custom``` in ```Keymap```).
+5. Press ```FN + M + Right CMD``` to sync the current backlight color from VIA to side light. (You could also assign a specific a key for this action. Look for ```Side Sync``` under ```Custom``` in ```Keymap```. Be sure to use the updated JSON file to update in ```Design``` tab in VIA, similar to this step 2 in [here](https://nuphy.com/pages/via-usage-guide-for-nuphy-keyboards)).
 6. Now you are freely to adjust the color for key lights. To change side light color again, repeat steps 4-6.
 
 **Limitations**
