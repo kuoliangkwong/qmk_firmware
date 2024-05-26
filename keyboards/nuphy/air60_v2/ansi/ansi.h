@@ -41,6 +41,7 @@ enum custom_keycodes {
     SIDE_HUI,
     SIDE_SPI,
     SIDE_SPD,
+    SIDE_SYNC,
 
     DEV_RESET,
     SLEEP_MODE,
@@ -127,6 +128,11 @@ typedef enum {
 #define LINK_USB         4
 
 #define UART_MAX_LEN     64
+
+#define DEFAULT_BRIGHTNESS_FLAG_BIT 1
+#define SIDE_RGB_BIT 2
+#define SLEEP_ENABLE_BIT 4
+
 typedef struct
 {
     uint8_t RXDState;
@@ -166,12 +172,19 @@ typedef struct
 
 typedef struct
 {
-    uint8_t default_brightness_flag;
     uint8_t ee_side_mode;
     uint8_t ee_side_light;
     uint8_t ee_side_speed;
-    uint8_t ee_side_rgb;
     uint8_t ee_side_colour;
-    uint8_t sleep_enable;
-    uint8_t retain2;
+    uint8_t ee_side_custom_colour_r;
+    uint8_t ee_side_custom_colour_g;
+    uint8_t ee_side_custom_colour_b;
+    // 1st bit = Brightness flag
+    // 2nd bit = Enable side rgb (aka rainbow)
+    // 3rd bit = Enable sleep
+    // We need squeeze all these boolean in bit form because adding
+    // the ee_side_custom_colour seems to make the keyboard out of storage for eeprom.
+    // We can see that some of the last values not being saved previously. Hence,
+    // This is to save more space for limited eeprom in the keyboard.
+    uint8_t other_data;
 } user_config_t;

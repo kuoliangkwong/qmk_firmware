@@ -24,8 +24,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SIDE_BREATH         3
 #define SIDE_OFF            4
 
-#define LIGHT_COLOUR_MAX    8
-#define SIDE_COLOUR_MAX     8
+#define LIGHT_COLOUR_MAX    1
+#define SIDE_COLOUR_MAX     1
 #define LIGHT_SPEED_MAX     4
 #define SIDE_BLINK_LIGHT    128
 #define SIDE_LINE           5
@@ -63,12 +63,13 @@ const uint8_t side_led_index_tab[SIDE_LINE][2] =
 uint8_t side_mode           = 0;
 uint8_t side_light          = 3;
 uint8_t side_speed          = 2;
-uint8_t side_rgb            = 1;
+bool side_rgb               = true;
 uint8_t side_colour         = 0;
 uint8_t side_play_point     = 0;
 uint8_t side_play_cnt       = 0;
 uint32_t side_play_timer    = 0;
 uint8_t r_temp, g_temp, b_temp;
+RGB side_custom_colour;
 
 extern bool f_bat_hold;
 extern DEV_INFO_STRUCT dev_info;
@@ -76,6 +77,7 @@ extern user_config_t user_config;
 extern uint8_t rf_blink_cnt;
 extern uint16_t rf_link_show_time;
 extern uint8_t g_pwm_buffer[DRIVER_COUNT][192];
+extern uint8_t enable_bit(uint8_t existing_value, uint8_t bit_mask, bool enabled);
 
 /**
  * @brief is_side_rgb_off
@@ -165,14 +167,14 @@ void side_colour_control(uint8_t dir)
 {
     if (side_mode != SIDE_WAVE) {
         if (side_rgb) {
-            side_rgb    = 0;
+            side_rgb    = false;
             side_colour = 0;
         }
     }
 
     if (dir) {
         if (side_rgb) {
-            side_rgb    = 0;
+            side_rgb    = false;
             side_colour = 0;
         } else {
             side_colour++;
@@ -183,17 +185,17 @@ void side_colour_control(uint8_t dir)
         }
     } else {
         if (side_rgb) {
-            side_rgb    = 0;
+            side_rgb    = false;
             side_colour = LIGHT_COLOUR_MAX - 1;
         } else {
             side_colour--;
             if (side_colour >= LIGHT_COLOUR_MAX) {
-                side_rgb    = 1;
+                side_rgb    = true;
                 side_colour = 0;
             }
         }
     }
-    user_config.ee_side_rgb    = side_rgb;
+    user_config.other_data = enable_bit(user_config.other_data, SIDE_RGB_BIT, side_rgb);
     user_config.ee_side_colour = side_colour;
     eeconfig_update_user_datablock(&user_config);
 }
@@ -219,6 +221,38 @@ void side_mode_control(uint8_t dir)
     }
     side_play_point          = 0;
     user_config.ee_side_mode = side_mode;
+    eeconfig_update_user_datablock(&user_config);
+}
+
+void update_side_custom_colour_to_config(void)
+{
+    user_config.ee_side_custom_colour_r = side_custom_colour.r;
+    user_config.ee_side_custom_colour_g = side_custom_colour.g;
+    user_config.ee_side_custom_colour_b = side_custom_colour.b;
+}
+
+void update_side_custom_colour_from_config(void)
+{
+    side_custom_colour.r = user_config.ee_side_custom_colour_r;
+    side_custom_colour.g = user_config.ee_side_custom_colour_g;
+    side_custom_colour.b = user_config.ee_side_custom_colour_b;
+}
+
+void update_default_side_custom_colour_from_side_mode(void) {
+    side_custom_colour.r = colour_lib[3][0];
+    side_custom_colour.g = colour_lib[3][1];
+    side_custom_colour.b = colour_lib[3][2];
+}
+
+void side_sync(void)
+{
+    side_custom_colour = hsv_to_rgb(rgb_matrix_get_hsv());
+}
+
+void side_sync_control(void)
+{
+    side_sync();
+    update_side_custom_colour_to_config();
     eeconfig_update_user_datablock(&user_config);
 }
 
@@ -294,7 +328,7 @@ void sleep_sw_led_show(void)
     }
 
     if (sleep_show_flag) {
-        if (user_config.sleep_enable) {
+        if (user_config.other_data & SLEEP_ENABLE_BIT) {
             r_temp = 0x00;
             g_temp = SIDE_BLINK_LIGHT;
             b_temp = 0x00;
@@ -393,11 +427,10 @@ static void side_wave_mode_show(void)
             b_temp = flow_rainbow_colour_tab[play_index][2] * 0.4;
 
             light_point_playing(1, 24, FLOW_COLOUR_TAB_LEN, &play_index);
-
         } else {
-            r_temp = colour_lib[side_colour][0];
-            g_temp = colour_lib[side_colour][1];
-            b_temp = colour_lib[side_colour][2];
+            r_temp = side_custom_colour.r;
+            g_temp = side_custom_colour.g;
+            b_temp = side_custom_colour.b;
 
             light_point_playing(1, 12, WAVE_TAB_LEN, &play_index);
             count_rgb_light(wave_data_tab[play_index]);
@@ -465,9 +498,9 @@ static void side_breathe_mode_show(void)
         g_temp = colour_lib[side_play_point][1];
         b_temp = colour_lib[side_play_point][2];
     } else {
-        r_temp = colour_lib[side_colour][0];
-        g_temp = colour_lib[side_colour][1];
-        b_temp = colour_lib[side_colour][2];
+        r_temp = side_custom_colour.r;
+        g_temp = side_custom_colour.g;
+        b_temp = side_custom_colour.b;
     }
 
     count_rgb_light(breathe_data_tab[play_point]);
@@ -501,11 +534,10 @@ static void side_static_mode_show(void)
             g_temp = flow_rainbow_colour_tab[16 * i][1];
             b_temp = flow_rainbow_colour_tab[16 * i][2];
             light_point_playing(0, 24, FLOW_COLOUR_TAB_LEN, &play_index);
-        } else
-        {
-            r_temp = colour_lib[side_colour][0];
-            g_temp = colour_lib[side_colour][1];
-            b_temp = colour_lib[side_colour][2];
+        } else {
+            r_temp = side_custom_colour.r;
+            g_temp = side_custom_colour.g;
+            b_temp = side_custom_colour.b;
         }
 
         count_rgb_light(side_light_table[side_light]);
@@ -788,10 +820,9 @@ void device_reset_init(void)
     side_mode       = 0;
     side_light      = 3;
     side_speed      = 2;
-    side_rgb        = 1;
+    side_rgb        = true;
     side_colour     = 0;
     side_play_point = 0;
-
     side_play_cnt   = 0;
     side_play_timer = timer_read32();
 
@@ -801,14 +832,16 @@ void device_reset_init(void)
     rgb_matrix_mode(RGB_MATRIX_DEFAULT_MODE);
     rgb_matrix_set_speed(255 - RGB_MATRIX_SPD_STEP * 2);
     rgb_matrix_sethsv(255, 255, RGB_MATRIX_MAXIMUM_BRIGHTNESS - RGB_MATRIX_VAL_STEP * 2);
+    update_default_side_custom_colour_from_side_mode();
 
-    user_config.default_brightness_flag = 0xA5;
+    user_config.other_data              |= DEFAULT_BRIGHTNESS_FLAG_BIT;
+    user_config.other_data              |= SIDE_RGB_BIT;
+    user_config.other_data              |= SLEEP_ENABLE_BIT;
     user_config.ee_side_mode            = side_mode;
     user_config.ee_side_light           = side_light;
     user_config.ee_side_speed           = side_speed;
-    user_config.ee_side_rgb             = side_rgb;
     user_config.ee_side_colour          = side_colour;
-    user_config.sleep_enable            = true;
+    update_side_custom_colour_to_config();
     eeconfig_update_user_datablock(&user_config);
 }
 

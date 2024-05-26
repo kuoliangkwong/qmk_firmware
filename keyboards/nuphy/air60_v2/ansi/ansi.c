@@ -62,13 +62,18 @@ uint16_t rgb_test_press_delay    = 0;
 extern uint8_t side_mode;
 extern uint8_t side_light;
 extern uint8_t side_speed;
-extern uint8_t side_rgb;
+extern bool side_rgb;
 extern uint8_t side_colour;
+extern RGB side_custom_colour;
 extern report_keyboard_t *keyboard_report;
 extern uint8_t uart_bit_report_buf[32];
 extern uint8_t bitkb_report_buf[32];
 extern uint8_t bytekb_report_buf[8];
 
+extern void side_sync_control(void);
+extern void update_default_side_custom_colour_from_side_mode(void);
+extern void update_side_custom_colour_to_config(void);
+extern void update_side_custom_colour_from_config(void);
 extern void m_side_led_show(void);
 extern void Sleep_Handle(void);
 extern void num_led_show(void);
@@ -583,7 +588,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record)
                 side_mode_control(1);
             }
             return false;
-
+        case SIDE_SYNC:
+            if (record->event.pressed) {
+                side_sync_control();
+            }
+            return false;
         case SIDE_HUI:
             if (record->event.pressed) {
                 side_colour_control(1);
@@ -613,8 +622,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record)
 
         case SLEEP_MODE:
             if (record->event.pressed) {
-                if(user_config.sleep_enable) user_config.sleep_enable = false;
-                else user_config.sleep_enable = true;
+                user_config.other_data ^= SLEEP_ENABLE_BIT;
                 f_sleep_show       = 1;
                 eeconfig_update_user_datablock(&user_config);
             }
@@ -691,6 +699,12 @@ void timer_pro(void)
         rf_linking_time++;
 }
 
+uint8_t enable_bit(uint8_t existing_value, uint8_t bit_mask, bool enabled)
+{
+    if (enabled)
+        return existing_value | bit_mask;
+    return existing_value & ~bit_mask;
+}
 
 /**
  * @brief  londing eeprom data.
@@ -698,22 +712,25 @@ void timer_pro(void)
 void m_londing_eeprom_data(void)
 {
     eeconfig_read_user_datablock(&user_config);
-    if (user_config.default_brightness_flag != 0xA5) {
+    if (!(user_config.other_data & DEFAULT_BRIGHTNESS_FLAG_BIT)) {
         rgb_matrix_sethsv(255, 255, RGB_MATRIX_MAXIMUM_BRIGHTNESS - RGB_MATRIX_VAL_STEP * 2);
-        user_config.default_brightness_flag = 0xA5;
+        update_default_side_custom_colour_from_side_mode();
+        user_config.other_data              |= DEFAULT_BRIGHTNESS_FLAG_BIT;
+        user_config.other_data              |= SLEEP_ENABLE_BIT;
+        user_config.other_data              = enable_bit(user_config.other_data, SIDE_RGB_BIT, side_rgb);
         user_config.ee_side_mode            = side_mode;
         user_config.ee_side_light           = side_light;
         user_config.ee_side_speed           = side_speed;
-        user_config.ee_side_rgb             = side_rgb;
         user_config.ee_side_colour          = side_colour;
-        user_config.sleep_enable            = true;
+        update_side_custom_colour_to_config();
         eeconfig_update_user_datablock(&user_config);
     } else {
         side_mode   = user_config.ee_side_mode;
         side_light  = user_config.ee_side_light;
         side_speed  = user_config.ee_side_speed;
-        side_rgb    = user_config.ee_side_rgb;
+        side_rgb    = user_config.other_data & SIDE_RGB_BIT;
         side_colour = user_config.ee_side_colour;
+        update_side_custom_colour_from_config();
     }
 }
 
